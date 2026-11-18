@@ -239,7 +239,8 @@ const surfaceRule = (id, feature, tags, iterations, denominator) => ({
     conditions: { placement_pass: 'surface_pass', 'minecraft:biome_filter': anyTag(tags) },
     distribution: {
       iterations,
-      scatter_chance: { numerator: 1, denominator },
+      // Bedrock wants the denominator above the numerator: leave it out for "every chunk".
+      ...(denominator > 1 ? { scatter_chance: { numerator: 1, denominator } } : {}),
       x: { distribution: 'uniform', extent: [0, 15] },
       y: 'query.heightmap(variable.worldx, variable.worldz)',
       z: { distribution: 'uniform', extent: [0, 15] },

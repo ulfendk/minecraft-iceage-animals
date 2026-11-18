@@ -1,0 +1,487 @@
+// Parametric body plans shared by several species.
+import { eyes, frontEyes, legs4, nostrils } from './parts.mjs';
+
+/**
+ * Big cats and hyenas. All sizes in pixels; widths should be even.
+ * Returns a model spec with bones: root, body, head, (mane), ear_l, ear_r, tail, tail2, legs.
+ * Materials used: fur, muzzle, paw, ear, tail, tuft, mane, and with options: jaw, fang, brow.
+ * mane: true for a head mane, 'full' to continue it down the chest.
+ * jaw: a separate, slightly open lower jaw with fangs (a snarl).
+ */
+export function felid({
+  bodyW = 8, bodyH = 8, bodyL = 18, legH = 11, legW = 3,
+  headW = 8, headH = 7, headD = 6, muzzleW, muzzleH, muzzleD = 2,
+  tailL = 12, tuft = false, mane = false, earH = 2, earW = 2,
+  eyeColor = '#c8a23a', hump = 0, slope = 0, jaw = false, jawOpen = 15, brow = false,
+} = {}) {
+  const bottom = legH - 1;
+  const top = bottom + bodyH;
+  const zf = -bodyL / 2;
+  const zb = bodyL / 2;
+  const mw = muzzleW ?? Math.max(2, Math.round(headW / 4) * 2 - 2);
+  const mh = muzzleH ?? Math.max(2, Math.floor(headH / 2));
+  const hy = top - headH + 2 + hump; // head bottom
+  const hzf = zf - headD + 1; // head front
+  const bones = [
+    { name: 'root', pivot: [0, 0, 0] },
+    {
+      name: 'body', parent: 'root', pivot: [0, top - 2, 0],
+      cubes: [
+        { origin: [-bodyW / 2, bottom, zf], size: [bodyW, bodyH, bodyL / 2], mat: 'fur' },
+        { origin: [-bodyW / 2, bottom, 0], size: [bodyW, bodyH - slope, bodyL / 2], mat: 'fur' },
+        ...(hump ? [{ origin: [-bodyW / 2 + 1, top, zf + 1], size: [bodyW - 2, hump, Math.round(bodyL / 3)], mat: 'fur' }] : []),
+      ],
+    },
+    {
+      name: 'head', parent: 'body', pivot: [0, top - 1, zf],
+      cubes: [
+        {
+          origin: [-headW / 2, hy, hzf], size: [headW, headH, headD], mat: 'fur',
+          marks: frontEyes(headW, { gap: Math.max(2, headW - 6), down: brow ? 2 : Math.max(1, headH - mh - 2), color: eyeColor, pupil: '#111111' }),
+        },
+        {
+          origin: [-mw / 2, hy + (jaw ? 1 : 0), hzf - muzzleD], size: [mw, mh - (jaw ? 1 : 0), muzzleD], mat: 'muzzle',
+          marks: [{ face: 'front', x: mw / 2 - 1, y: 0, w: 2, h: 1, color: '#3b2620' }],
+        },
+        ...(brow ? [{ origin: [-headW / 2, hy + headH - 2, hzf - 1], size: [headW, 1, 1], mat: 'brow' }] : []),
+      ],
+    },
+  ];
+  if (jaw) {
+    bones[2].cubes.push(
+      { origin: [-mw / 2, hy, hzf - muzzleD], size: [1, 1, 1], mat: 'fang' },
+      { origin: [mw / 2 - 1, hy, hzf - muzzleD], size: [1, 1, 1], mat: 'fang' },
+    );
+    bones.push({
+      name: 'jaw', parent: 'head', pivot: [0, hy + 1, hzf + 1], rotation: [jawOpen, 0, 0],
+      cubes: [{ origin: [-mw / 2, hy, hzf - muzzleD], size: [mw, 1, muzzleD + 1], mat: 'jaw' }],
+    });
+  }
+  if (mane) {
+    bones.push({
+      name: 'mane', parent: 'head', pivot: [0, top - 1, zf],
+      cubes: [
+        { origin: [-headW / 2 - 2, hy - 3, hzf + 2], size: [headW + 4, headH + 5, 5], mat: 'mane' },
+        { origin: [-headW / 2 - 1, hy - 4, hzf + 6], size: [headW + 2, headH + 4, 4], mat: 'mane' },
+        ...(mane === 'full' ? [{ origin: [-headW / 2, hy - 7, hzf + 3], size: [headW, 5, 7], mat: 'mane' }] : []),
+      ],
+    });
+  }
+  const earZ = hzf + Math.floor(headD / 2);
+  bones.push(
+    { name: 'ear_l', parent: 'head', pivot: [headW / 2 - 1, hy + headH, earZ + 0.5], cubes: [{ origin: [headW / 2 - earW, hy + headH, earZ], size: [earW, earH, 1], mat: 'ear' }] },
+    { name: 'ear_r', parent: 'head', pivot: [-headW / 2 + 1, hy + headH, earZ + 0.5], cubes: [{ origin: [-headW / 2, hy + headH, earZ], size: [earW, earH, 1], mat: 'ear' }] },
+  );
+  const half = Math.ceil(tailL / 2);
+  const ty = top - 1 - slope;
+  bones.push(
+    { name: 'tail', parent: 'body', pivot: [0, ty, zb], rotation: [40, 0, 0], cubes: [{ origin: [-1, ty - half, zb], size: [2, half, 2], mat: 'fur' }] },
+    {
+      name: 'tail2', parent: 'tail', pivot: [0, ty - half, zb + 1], rotation: [-20, 0, 0],
+      cubes: [
+        { origin: [-1, ty - half - (tailL - half), zb], size: [2, tailL - half, 2], mat: 'tail' },
+        ...(tuft ? [{ origin: [-1, ty - tailL - 2, zb], size: [2, 2, 2], mat: 'tuft', inflate: 0.25 }] : []),
+      ],
+    },
+  );
+  bones.push(...legs4({ x: bodyW / 2, front: zf + 1, back: zb - 1 - legW, w: legW, h: legH, foot: 1, mat: 'fur', footMat: 'paw' }));
+  return { bones };
+}
+
+/** Large heavy herbivores on pillar legs (rhino, hippo, elephant use custom heads on this). */
+export function pillarBody({ bodyW, bodyH, bodyL, legH, legW, bottomGap = 1 }) {
+  const bottom = legH - bottomGap;
+  return {
+    bottom,
+    top: bottom + bodyH,
+    bones: [
+      { name: 'root', pivot: [0, 0, 0] },
+      { name: 'body', parent: 'root', pivot: [0, bottom + bodyH / 2, 0], cubes: [{ origin: [-bodyW / 2, bottom, -bodyL / 2], size: [bodyW, bodyH, bodyL], mat: 'hide' }] },
+      ...legs4({ x: bodyW / 2 - 1, front: -bodyL / 2 + 1, back: bodyL / 2 - 1 - legW, w: legW, h: legH, foot: 1, mat: 'hide', footMat: 'toe' }),
+    ],
+  };
+}
+
+/**
+ * Knuckle-walking apes: tall chest, low hips, long front limbs (named leg_fl/leg_fr
+ * so the quadruped walk applies; primate() animations treat them as arms).
+ */
+export function ape({ faceColor = '#3a3030', eyeColor = '#e8e0d0', pupilColor = '#2a1a10', chestW, chestH, chestD, hipW, hipH, hipD, armW, armH, legW, legH, headW, headH, headD, crest = false, ears = false }) {
+  const base = legH - 1;
+  const cz = -chestD; // chest front
+  const top = base + chestH;
+  const hy = top - headH + 3; // head bottom
+  const hz = cz - headD + 1; // head front
+  const bones = [
+    { name: 'root', pivot: [0, 0, 0] },
+    {
+      name: 'body', parent: 'root', pivot: [0, base + 2, 0],
+      cubes: [
+        { origin: [-chestW / 2, base, cz], size: [chestW, chestH, chestD], mat: 'fur' },
+        { origin: [-hipW / 2, base, 0], size: [hipW, hipH, hipD], mat: 'fur' },
+      ],
+    },
+    {
+      name: 'head', parent: 'body', pivot: [0, top - 2, cz],
+      cubes: [
+        {
+          origin: [-headW / 2, hy, hz], size: [headW, headH, headD], mat: 'fur',
+          marks: [
+            { face: 'front', x: 0, y: 2, w: headW, h: headH - 2, color: faceColor },
+            ...frontEyes(headW, { gap: 2, down: 2, color: eyeColor, pupil: pupilColor }),
+          ],
+        },
+        // Heavy brow ridge and protruding muzzle.
+        { origin: [-headW / 2, hy + headH - 2, hz - 1], size: [headW, 2, 1], mat: 'brow' },
+        {
+          origin: [-headW / 2 + 1, hy, hz - 1], size: [headW - 2, headH - 4, 1], mat: 'face',
+          marks: [{ face: 'front', x: (headW - 2) / 2 - 1, y: 0, w: 2, color: '#151515' }],
+        },
+        ...(crest ? [{ origin: [-2, hy + headH, hz + 2], size: [4, 2, Math.max(2, headD - 3)], mat: 'fur' }] : []),
+        ...(ears ? [
+          { origin: [headW / 2, hy + headH - 4, hz + 2], size: [1, 2, 2], mat: 'face' },
+          { origin: [-headW / 2 - 1, hy + headH - 4, hz + 2], size: [1, 2, 2], mat: 'face' },
+        ] : []),
+      ],
+    },
+    { name: 'leg_fl', parent: 'root', pivot: [chestW / 2 + armW / 2, armH - 1, cz + armW / 2 + 1], cubes: [{ origin: [chestW / 2, 0, cz + 1], size: [armW, armH, armW], mat: 'fur' }, { origin: [chestW / 2, 0, cz + 1], size: [armW, 1, armW], mat: 'hand', inflate: 0.1 }] },
+    { name: 'leg_fr', parent: 'root', pivot: [-chestW / 2 - armW / 2, armH - 1, cz + armW / 2 + 1], cubes: [{ origin: [-chestW / 2 - armW, 0, cz + 1], size: [armW, armH, armW], mat: 'fur' }, { origin: [-chestW / 2 - armW, 0, cz + 1], size: [armW, 1, armW], mat: 'hand', inflate: 0.1 }] },
+    { name: 'leg_bl', parent: 'root', pivot: [hipW / 2 - legW / 2, legH, hipD / 2], cubes: [{ origin: [hipW / 2 - legW, 0, hipD / 2 - legW / 2], size: [legW, legH, legW], mat: 'fur' }] },
+    { name: 'leg_br', parent: 'root', pivot: [-hipW / 2 + legW / 2, legH, hipD / 2], cubes: [{ origin: [-hipW / 2, 0, hipD / 2 - legW / 2], size: [legW, legH, legW], mat: 'fur' }] },
+  ];
+  return { bones };
+}
+
+/**
+ * Bears: a heavy barrel body on thick legs, a low-slung head with a blunt muzzle and small
+ * round ears, a stub tail and long claws on the front paws. All sizes in pixels.
+ * Returns a model spec with bones: root, body, head, jaw, ear_l, ear_r, tail, legs, plus
+ * `rear` (the hip and shoulder points and the head lift for extras.rear).
+ * Materials used: fur, muzzle, nose, paw, claw, ear, jaw, fang; with options: shag.
+ * hump: a shoulder hump (grizzly). shag: a shaggy ruff over the neck and shoulders (sloth bear).
+ */
+export function ursid({
+  bodyW = 10, bodyH = 9, bodyL = 18, legH = 8, legW = 4,
+  headW = 7, headH = 6, headD = 6, muzzleW = 4, muzzleH = 3, muzzleD = 3,
+  hump = 0, shag = 0, earSize = 2, eyeColor = '#1a1210',
+} = {}) {
+  const bottom = legH - 1;
+  const top = bottom + bodyH;
+  const zf = -bodyL / 2;
+  const zb = bodyL / 2;
+  const hy = top - headH; // head bottom: bears carry their heads low
+  const hzf = zf - headD - 1; // head front, on a short thick neck
+  const hip = [bottom + 1, zb - 1 - legW / 2]; // over the hind legs, where the body pivots to rear up
+  const bones = [
+    { name: 'root', pivot: [0, 0, 0] },
+    {
+      name: 'body', parent: 'root', pivot: [0, hip[0], hip[1]],
+      cubes: [
+        { origin: [-bodyW / 2, bottom, zf], size: [bodyW, bodyH, bodyL], mat: 'fur' },
+        ...(hump ? [{ origin: [-bodyW / 2 + 1, top, zf + 1], size: [bodyW - 2, hump, Math.round(bodyL / 3)], mat: 'fur' }] : []),
+        ...(shag ? [{ origin: [-bodyW / 2 - 1, top - 4, zf - 1], size: [bodyW + 2, 4 + shag, 7], mat: 'shag' }] : []),
+      ],
+    },
+    {
+      name: 'head', parent: 'body', pivot: [0, top - 2, zf],
+      cubes: [
+        {
+          origin: [-headW / 2, hy, hzf], size: [headW, headH, headD], mat: 'fur',
+          marks: frontEyes(headW, { gap: muzzleW, down: Math.max(1, headH - muzzleH - 2), color: eyeColor }),
+        },
+        {
+          origin: [-muzzleW / 2, hy + 1, hzf - muzzleD], size: [muzzleW, muzzleH - 1, muzzleD], mat: 'muzzle',
+          marks: [{ face: 'front', x: muzzleW / 2 - 1, y: 0, w: 2, color: '#16110f' }, { face: 'top', x: muzzleW / 2 - 1, y: 0, w: 2, color: '#16110f' }],
+        },
+        { origin: [-headW / 2 + 1, hy - 1, hzf + headD - 1], size: [headW - 2, headH, 3], mat: 'fur' },
+        { origin: [-muzzleW / 2, hy + 1, hzf - muzzleD], size: [1, 1, 1], mat: 'fang', inflate: -0.1 },
+        { origin: [muzzleW / 2 - 1, hy + 1, hzf - muzzleD], size: [1, 1, 1], mat: 'fang', inflate: -0.1 },
+      ],
+    },
+    {
+      name: 'jaw', parent: 'head', pivot: [0, hy + 1, hzf + 1],
+      cubes: [{ origin: [-muzzleW / 2, hy, hzf - muzzleD], size: [muzzleW, 1, muzzleD + 1], mat: 'jaw', inflate: -0.05 }],
+    },
+  ];
+  const earZ = hzf + Math.floor(headD / 2) - 1;
+  bones.push(
+    { name: 'ear_l', parent: 'head', pivot: [headW / 2 - 1, hy + headH, earZ + 0.5], cubes: [{ origin: [headW / 2 - earSize + 0.5, hy + headH - 0.5, earZ], size: [earSize, earSize, 1], mat: 'ear' }] },
+    { name: 'ear_r', parent: 'head', pivot: [-headW / 2 + 1, hy + headH, earZ + 0.5], cubes: [{ origin: [-headW / 2 - 0.5, hy + headH - 0.5, earZ], size: [earSize, earSize, 1], mat: 'ear' }] },
+    { name: 'tail', parent: 'body', pivot: [0, top - 2, zb], rotation: [20, 0, 0], cubes: [{ origin: [-1, top - 4, zb], size: [2, 2, 1], mat: 'fur' }] },
+  );
+  // Thick legs; the front paws carry long pale claws.
+  bones.push(...legs4({ x: bodyW / 2, front: zf + 1, back: zb - 1 - legW, w: legW, h: legH, foot: 1, mat: 'fur', footMat: 'paw' }).map((b) =>
+    b.name.startsWith('leg_f') ? { ...b, cubes: [...b.cubes, { origin: [b.cubes[0].origin[0], 0, b.cubes[0].origin[2] - 1], size: [legW, 1, 1], mat: 'claw' }] } : b));
+  return { bones, rear: { hip, shoulder: [legH, zf + 1 + legW / 2], headLift: [headH - 2, headD - 1] } };
+}
+
+/**
+ * Goats, sheep, ibex, chamois and yaks: a compact body on slim legs, a short upright neck
+ * and a long face. Horns are passed in as cubes (see hornArc) because every species has
+ * its own: horns is a list of cubes, or a function that gets the head's edges
+ * ({ top, bottom, front, back, side }, model pixels) and returns them.
+ * Returns { bones, rear }, rear being the hip and shoulder points for extras.clash().
+ * Materials used: hide, face, muzzle, ear, tail, hoof, horn; with options: beard, skirt.
+ * beard: a goatee under the chin (px long). hump: a shoulder hump. skirt: a curtain of long
+ * hair hanging from the flanks (yak). extra: more bones (saddle, chest).
+ */
+export function caprid({
+  bodyW = 8, bodyH = 8, bodyL = 14, legH = 10, legW = 2,
+  neckW = 4, neckH = 7, headW = 4, headH = 4, headD = 6, muzzleD = 2,
+  earL = 2, tail = 2, beard = 0, hump = 0, skirt = 0, horns = [], extra = [],
+} = {}) {
+  const bottom = legH - 1;
+  const top = bottom + bodyH;
+  const zf = -bodyL / 2;
+  const zb = bodyL / 2;
+  const neckTop = top - 3 + neckH;
+  const hz = zf - 2 - headD; // head front
+  const hy = neckTop - headH + 1; // head bottom
+  const hip = [bottom + 1, zb - 1 - legW / 2];
+  const edges = { top: neckTop + 1, bottom: hy, front: hz, back: hz + headD, side: headW / 2 };
+  const bones = [
+    { name: 'root', pivot: [0, 0, 0] },
+    {
+      name: 'body', parent: 'root', pivot: [0, hip[0], hip[1]],
+      cubes: [
+        { origin: [-bodyW / 2, bottom, zf], size: [bodyW, bodyH, bodyL], mat: 'hide' },
+        ...(hump ? [{ origin: [-bodyW / 2 + 1, top, zf + 1], size: [bodyW - 2, hump, Math.round(bodyL / 3)], mat: 'hide' }] : []),
+        ...(skirt ? [{ origin: [-bodyW / 2 - 0.5, bottom - skirt, zf + 1], size: [bodyW + 1, skirt + 3, bodyL - 2], mat: 'skirt', hair: true }] : []),
+      ],
+    },
+    {
+      name: 'neck', parent: 'body', pivot: [0, top - 2, zf + 2],
+      cubes: [{ origin: [-neckW / 2, top - 3, zf - 3], size: [neckW, neckH, 5], mat: 'hide' }],
+    },
+    {
+      name: 'head', parent: 'neck', pivot: [0, neckTop - 1, zf - 2],
+      cubes: [
+        { origin: [-headW / 2, hy, hz], size: [headW, headH, headD], mat: 'face', marks: eyes(headD, { back: 2, down: 1, color: '#16110d' }) },
+        {
+          origin: [-(headW - 2) / 2, hy, hz - muzzleD], size: [headW - 2, Math.max(2, headH - 2), muzzleD], mat: 'muzzle',
+          marks: nostrils(headW - 2, { gap: 0, color: '#1a1410' }),
+        },
+        ...(beard ? [{ origin: [-1, hy - beard, hz + 1], size: [2, beard, 2], mat: 'beard' }] : []),
+        ...(typeof horns === 'function' ? horns(edges) : horns),
+      ],
+    },
+    { name: 'ear_l', parent: 'head', pivot: [headW / 2, neckTop - 1, hz + headD - 1.5], rotation: [0, 0, -15], cubes: [{ origin: [headW / 2, neckTop - 1.5, hz + headD - 2], size: [earL, 1, 1], mat: 'ear' }] },
+    { name: 'ear_r', parent: 'head', pivot: [-headW / 2, neckTop - 1, hz + headD - 1.5], rotation: [0, 0, 15], cubes: [{ origin: [-headW / 2 - earL, neckTop - 1.5, hz + headD - 2], size: [earL, 1, 1], mat: 'ear' }] },
+    { name: 'tail', parent: 'body', pivot: [0, top - 1, zb], rotation: [15, 0, 0], cubes: [{ origin: [-1, top - 1 - tail, zb], size: [2, tail, 1], mat: 'tail' }] },
+    ...legs4({ x: bodyW / 2 - 0.5, front: zf + 1, back: zb - 1 - legW, w: legW, h: legH, foot: 1 }),
+    ...extra,
+  ];
+  return { bones, rear: { hip, shoulder: [legH, zf + 1 + legW / 2] } };
+}
+
+/**
+ * A pair of horns as a chain of small cubes along `path`, a list of [x, y, z] points
+ * (centres) for the left horn; the right horn mirrors it. size: cube edge, or a list
+ * with one entry per point so horns can taper.
+ */
+export function hornArc(path, { size = 2, mat = 'horn' } = {}) {
+  const cubes = [];
+  path.forEach(([x, y, z], i) => {
+    const s = Array.isArray(size) ? size[Math.min(i, size.length - 1)] : size;
+    for (const sx of [x, -x]) cubes.push({ origin: [r2(sx - s / 2), r2(y - s / 2), r2(z - s / 2)], size: [s, s, s], mat });
+  });
+  return cubes;
+}
+
+/** Points along a circle in the side (y-z) plane: angle 0 is straight up, 90 straight back. */
+export function sideArc({ x, centre: [cy, cz], radius, from, to, steps, spread = 0, shrink = 0 }) {
+  return Array.from({ length: steps }, (_, i) => {
+    const t = steps === 1 ? 0 : i / (steps - 1);
+    const a = ((from + (to - from) * t) * Math.PI) / 180;
+    const rad = radius * (1 - shrink * t);
+    return [x + spread * t, cy + rad * Math.cos(a), cz + rad * Math.sin(a)];
+  });
+}
+
+const r2 = (n) => Math.round(n * 4) / 4;
+
+/**
+ * Mammoths and mastodons: a deep body on pillar legs that slopes down from the shoulders to
+ * the hips, a big head with a domed crown, a trunk in three segments, small ears and long
+ * tusks (passed in as cubes, like horns; see hornArc). All sizes in pixels.
+ * hump: fat hump over the shoulders. skirt: long hair hanging from the flanks (px below the
+ * belly). Returns { bones, top, seatY } where top is the height of the back behind the hump.
+ * Materials used: hide, face, trunk, ear, toe, tail, tuft, tusk, blanket, chest; with
+ * options: skirt (long hair) and mane (a hairy topknot).
+ */
+export function proboscidean({
+  legH = 13, legW = 5, bodyW = 16, frontH = 12, rearH = 10, bodyL = 26, hump = 2,
+  headW = 10, headH = 12, headD = 10, dome = 2, skirt = 0, topknot = false,
+  ear = [1, 4, 3], tusks = () => [], tail = 6,
+} = {}) {
+  const bottom = legH - 1;
+  const top = bottom + frontH;
+  const zf = -bodyL / 2;
+  const zb = bodyL / 2;
+  const hy = top - headH; // the head hangs low, its crown level with the hump
+  const hzf = zf - headD + 2;
+  const edges = { bottom: hy, top: hy + headH, front: hzf, back: hzf + headD, side: headW / 2 };
+  const bones = [
+    { name: 'root', pivot: [0, 0, 0] },
+    {
+      name: 'body', parent: 'root', pivot: [0, bottom + frontH / 2, 0],
+      cubes: [
+        { origin: [-bodyW / 2, bottom, zf], size: [bodyW, frontH, bodyL / 2], mat: 'hide' },
+        { origin: [-bodyW / 2 + 1, bottom, 0], size: [bodyW - 2, rearH, bodyL / 2], mat: 'hide' },
+        // The sloping back between the shoulders and the hips.
+        { origin: [-bodyW / 2 + 1, bottom + rearH, 0], size: [bodyW - 2, frontH - rearH - 1, Math.round(bodyL / 4)], mat: 'hide' },
+        ...(hump ? [{ origin: [-bodyW / 2 + 2, top, zf + 1], size: [bodyW - 4, hump, Math.round(bodyL / 3)], mat: 'hide' }] : []),
+        ...(skirt ? [{ origin: [-bodyW / 2 - 0.5, bottom - skirt, zf + 1], size: [bodyW + 1, skirt + 4, bodyL - 2], mat: 'skirt', hair: true }] : []),
+      ],
+    },
+    {
+      name: 'head', parent: 'body', pivot: [0, top - 2, zf + 1],
+      cubes: [
+        { origin: [-headW / 2, hy, hzf], size: [headW, headH, headD], mat: 'face', marks: eyes(headD, { back: 3, down: Math.round(headH / 2) - 1, color: '#1e1610' }) },
+        ...(dome ? [{ origin: [-headW / 2 + 1, hy + headH, hzf + 2], size: [headW - 2, dome, headD - 4], mat: 'face' }] : []),
+        ...(topknot ? [{ origin: [-headW / 2 + 1.5, hy + headH + dome - 1, hzf + 3], size: [headW - 3, 2, headD - 5], mat: 'mane', hair: true }] : []),
+      ],
+    },
+    { name: 'tusks', parent: 'head', pivot: [0, hy + 2, hzf + 2], cubes: tusks(edges) },
+    { name: 'ear_l', parent: 'head', pivot: [headW / 2, hy + headH - 3, hzf + headD - 3], cubes: [{ origin: [headW / 2, hy + headH - 2 - ear[1], hzf + headD - 2 - ear[2]], size: ear, mat: 'ear' }] },
+    { name: 'ear_r', parent: 'head', pivot: [-headW / 2, hy + headH - 3, hzf + headD - 3], cubes: [{ origin: [-headW / 2 - ear[0], hy + headH - 2 - ear[1], hzf + headD - 2 - ear[2]], size: ear, mat: 'ear' }] },
+    // The trunk hangs from the front of the face nearly to the ground and curls at the tip.
+    { name: 'trunk', parent: 'head', pivot: [0, hy + 3, hzf], cubes: [{ origin: [-2, hy - 4, hzf - 3], size: [4, 7, 4], mat: 'trunk' }] },
+    { name: 'trunk2', parent: 'trunk', pivot: [0, hy - 4, hzf - 1.5], rotation: [-6, 0, 0], cubes: [{ origin: [-1.5, hy - 10, hzf - 3], size: [3, 6, 3], mat: 'trunk' }] },
+    {
+      name: 'trunk3', parent: 'trunk2', pivot: [0, hy - 10, hzf - 1.5], rotation: [-16, 0, 0],
+      cubes: [{ origin: [-1, Math.max(1, hy - 15), hzf - 2.5], size: [2, Math.min(5, hy - 11), 2], mat: 'trunk' }, { origin: [-1.5, Math.max(0, hy - 16), hzf - 3.5], size: [3, 1, 2], mat: 'trunk' }],
+    },
+    {
+      name: 'tail', parent: 'body', pivot: [0, bottom + rearH - 1, zb], rotation: [10, 0, 0],
+      cubes: [
+        { origin: [-1, bottom + rearH - 1 - tail, zb], size: [2, tail, 1], mat: 'tail' },
+        { origin: [-1, bottom + rearH - 3 - tail, zb], size: [2, 2, 1], mat: 'tuft' },
+      ],
+    },
+    {
+      name: 'saddle', parent: 'body', pivot: [0, top, -2],
+      cubes: [
+        { origin: [-bodyW / 2 + 1, top - 1, -6], size: [bodyW - 2, 1, 12], mat: 'blanket', inflate: 0.3 },
+        { origin: [-bodyW / 2 - 1, top - 8, -6], size: [1, 8, 12], mat: 'blanket' },
+        { origin: [bodyW / 2, top - 8, -6], size: [1, 8, 12], mat: 'blanket' },
+      ],
+    },
+    {
+      name: 'chest', parent: 'body', pivot: [0, top - 6, 6],
+      cubes: [
+        { origin: [-bodyW / 2 - 3, top - 13, 3], size: [3, 7, 7], mat: 'chest' },
+        { origin: [bodyW / 2, top - 13, 3], size: [3, 7, 7], mat: 'chest' },
+      ],
+    },
+    ...legs4({ x: bodyW / 2 - 0.5, front: zf + 1, back: zb - 1 - legW, w: legW, h: legH, foot: 1, mat: 'hide', footMat: 'toe' }),
+  ];
+  return { bones, top, seatY: (top + 1) / 16 };
+}
+
+/** A single horn on the midline (rhinos) as a chain of cubes along `path` ([y, z] centres). */
+export function hornLine(path, { size = 2, width, mat = 'horn' } = {}) {
+  return path.map(([y, z], i) => {
+    const s = Array.isArray(size) ? size[Math.min(i, size.length - 1)] : size;
+    const w = width ? (Array.isArray(width) ? width[Math.min(i, width.length - 1)] : width) : s;
+    return { origin: [r2(-w / 2), r2(y - s / 2), r2(z - s / 2)], size: [w, s, s], mat };
+  });
+}
+
+/** Moves the cubes of `mat` out of bone `from` into a new child bone `name` (so the hunting kit sees antlers or tusks as their own zone). */
+export function splitBone(model, from, mat, name) {
+  const src = model.bones.find((b) => b.name === from);
+  const moved = src.cubes.filter((c) => c.mat === mat);
+  const i = model.bones.indexOf(src);
+  const bones = model.bones.map((b) => (b === src ? { ...b, cubes: b.cubes.filter((c) => c.mat !== mat) } : b));
+  bones.splice(i + 1, 0, { name, parent: from, pivot: src.pivot, cubes: moved });
+  return { ...model, bones };
+}
+
+/**
+ * Ground sloths: a bear-like body that is heavier at the back, a small narrow head, a thick
+ * tail they lean on when they rear up, and long curved claws on the front feet (they walk
+ * on their knuckles). Returns ursid()'s { bones, rear } with the extra parts.
+ * Materials: as ursid (fur, muzzle, nose, paw, claw, ear, jaw, fang) plus shag and tail.
+ */
+export function sloth({ tailL = 8, tailW = 4, ...o }) {
+  const base = ursid({ ...o, shag: 1 });
+  const body = base.bones.find((b) => b.name === 'body');
+  const [, bottom, zf] = body.cubes[0].origin;
+  const [bodyW, bodyH, bodyL] = body.cubes[0].size;
+  const zb = zf + bodyL;
+  const bones = base.bones
+    .filter((b) => b.name !== 'tail')
+    .map((b) => {
+      if (b.name === 'body') {
+        // Broad hips and a shaggy coat hanging over the flanks.
+        return { ...b, cubes: [...b.cubes, { origin: [-bodyW / 2 - 0.5, bottom + 1, zb - 9], size: [bodyW + 1, bodyH, 8], mat: 'fur' }, { origin: [-bodyW / 2 - 0.5, bottom - 2, zf + 2], size: [bodyW + 1, 4, bodyL - 4], mat: 'shag', hair: true }] };
+      }
+      if (b.name.startsWith('leg_f')) {
+        // Three long hooked claws curl under the front feet.
+        const x0 = b.cubes[0].origin[0];
+        const z0 = b.cubes[0].origin[2];
+        return { ...b, cubes: [...b.cubes.filter((c) => c.mat !== 'claw'), { origin: [x0, 0, z0 - 3], size: [b.cubes[0].size[0], 1, 3], mat: 'claw' }, { origin: [x0, 1, z0 - 3], size: [b.cubes[0].size[0], 1, 1], mat: 'claw' }] };
+      }
+      return b;
+    });
+  bones.push({
+    name: 'tail', parent: 'body', pivot: [0, bottom + 3, zb], rotation: [35, 0, 0],
+    cubes: [{ origin: [-tailW / 2, bottom + 3 - tailL, zb - 1], size: [tailW, tailL, tailW - 1], mat: 'tail' }],
+  });
+  return { bones, rear: base.rear };
+}
+
+/**
+ * Glyptodonts: a high domed shell of bony plates, a small armoured head cap, short thick
+ * legs and an armoured tail in rings (and a club for Doedicurus). All sizes in pixels.
+ * Materials: shell, rim, skin, cap, leg, claw, tail; with a club: club and spike.
+ */
+export function glyptodont({ shellW = 18, shellL = 24, shellH = 11, legH = 6, headW = 6, headD = 5, tailL = 10, club = false }) {
+  const bottom = legH - 1;
+  const zf = -shellL / 2;
+  const zb = shellL / 2;
+  const top = bottom + shellH;
+  const tailSegs = club ? 3 : 2;
+  const seg = Math.round(tailL / tailSegs);
+  const bones = [
+    { name: 'root', pivot: [0, 0, 0] },
+    {
+      name: 'body', parent: 'root', pivot: [0, bottom + 3, 0],
+      cubes: [
+        { origin: [-shellW / 2, bottom, zf], size: [shellW, shellH - 4, shellL], mat: 'shell' },
+        { origin: [-shellW / 2 + 1, bottom + shellH - 4, zf + 1], size: [shellW - 2, 2, shellL - 2], mat: 'shell' },
+        { origin: [-shellW / 2 + 3, bottom + shellH - 2, zf + 3], size: [shellW - 6, 2, shellL - 6], mat: 'shell' },
+        // The shell's flared lower rim.
+        { origin: [-shellW / 2 - 0.5, bottom, zf - 0.5], size: [shellW + 1, 1, shellL + 1], mat: 'rim' },
+      ],
+    },
+    {
+      name: 'head', parent: 'body', pivot: [0, bottom + 3, zf],
+      cubes: [
+        { origin: [-headW / 2, bottom, zf - headD + 1], size: [headW, headW - 1, headD], mat: 'skin', marks: eyes(headD, { back: 1, down: 1, color: '#120e0a' }) },
+        { origin: [-headW / 2, bottom + headW - 1, zf - headD + 1], size: [headW, 1, headD - 1], mat: 'cap' },
+        { origin: [-headW / 2 + 1, bottom, zf - headD - 1], size: [headW - 2, headW - 3, 2], mat: 'skin' },
+      ],
+    },
+  ];
+  let parent = 'body', z = zb, y = bottom + 3, w = 6;
+  for (let i = 0; i < tailSegs; i++) {
+    const name = i ? `tail${i + 1}` : 'tail';
+    const last = i === tailSegs - 1;
+    const cubes = [{ origin: [-w / 2, y - w / 2, z - 0.5], size: [w, w, seg + 1], mat: 'tail' }];
+    if (last && club) {
+      cubes.push({ origin: [-4, y - 3.5, z + seg - 1], size: [8, 7, 6], mat: 'club' });
+      for (const [sx, sy] of [[-5, 0], [4, 0], [-1, 3.5], [-1, -4.5], [-4.5, 2.5], [3.5, 2.5], [-4.5, -3], [3.5, -3]]) {
+        cubes.push({ origin: [sx, y + sy - 0.5, z + seg + 1], size: [1, 1, 2], mat: 'spike' });
+      }
+    }
+    bones.push({ name, parent, pivot: [0, y, z], rotation: i ? [-6, 0, 0] : [10, 0, 0], cubes });
+    parent = name;
+    z += seg;
+    w = Math.max(2, w - 2);
+  }
+  // The legs stop at the shell's rim, so a broadside shot at the heart goes through shell, not leg.
+  bones.push(...legs4({ x: shellW / 2 - 1, front: zf + 2, back: zb - 6, w: 4, h: legH - 1, foot: 1, mat: 'leg', footMat: 'claw' }));
+  return { bones, top };
+}

@@ -1,0 +1,27 @@
+{
+	"schemaVersion": 1,
+	"id": "iceage",
+	"version": "${version}",
+	"name": "Ice Age Animals",
+	"description": "Woolly mammoths, sabre-toothed cats, giant ground sloths and 17 more Ice Age animals, all at their real size. Works with Realistic Hunting.",
+	"authors": ["ulfendk"],
+	"contact": {
+		"homepage": "https://ulfendk.github.io/minecraft-iceage-animals/",
+		"sources": "https://github.com/ulfendk/minecraft-iceage-animals",
+		"issues": "https://github.com/ulfendk/minecraft-iceage-animals/issues"
+	},
+	"license": "MIT",
+	"icon": "assets/iceage/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": ["dk.ulfen.iceage.IceAgeAnimals"],
+		"client": ["dk.ulfen.iceage.client.IceAgeAnimalsClient"]
+	},
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~26.3",
+		"java": ">=25",
+		"fabric-api": "*",
+		"geckolib": ">=5.5"
+	}
+}

@@ -1,0 +1,18 @@
+{
+	"schemaVersion": 1,
+	"id": "iceage-test",
+	"version": "1.0.0",
+	"name": "Ice Age Animals tests",
+	"environment": "*",
+	"entrypoints": {
+		"fabric-gametest": [
+			"dk.ulfen.iceage.test.IceAgeGameTests"
+		],
+		"fabric-client-gametest": [
+			"dk.ulfen.iceage.test.IceAgeClientGameTest"
+		]
+	},
+	"depends": {
+		"iceage": "*"
+	}
+}

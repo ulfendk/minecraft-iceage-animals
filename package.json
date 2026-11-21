@@ -1,6 +1,6 @@
 {
   "name": "iceage-animals",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Ice Age Animals: a Minecraft Bedrock add-on and Java mod with woolly mammoths, sabre-toothed cats, giant ground sloths and other Ice Age animals at their real size",
   "private": true,
   "type": "module",

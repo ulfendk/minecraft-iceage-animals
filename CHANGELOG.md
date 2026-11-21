@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.1
+- Bedrock: mounts step up a full block like a horse. A ridden mammoth or woolly rhino, which can't jump, was stuck below every one-block ledge.
+
 ## 0.1.0
 First release.
 - 20 Ice Age animals, each built to the real animal's shoulder height and length (the build checks every model against `src/sizes.mjs`): woolly mammoth, American mastodon, woolly rhinoceros, Elasmotherium, steppe bison, Irish elk, wild horse, Macrauchenia, Diprotodon, Glyptodon, Doedicurus, giant ground sloth (Megatherium), Megalonyx, giant beaver (Castoroides), Smilodon, Homotherium, cave lion, cave bear, short-faced bear and dire wolf.
